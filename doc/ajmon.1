@@ -1,0 +1,295 @@
+.Dd October 15, 2019
+.Dt AJMON 1
+.Os
+.Sh NAME
+.Nm ajmon
+.Nd monitor automated ansible playbook runs
+.Sh SYNOPSIS
+.Nm ajmon
+.Op Fl J | H
+.Op Fl f Ar file ...
+.Op Fl o Ar fields , ...
+.Op Fl s Ar fields , ...
+.Op Ar table
+.Op Ar filter ...
+.Sh DESCRIPTION
+.Nm
+takes as input JSON files from ansible playbook runs and formats
+the information for display to a terminal.
+Using ansible's
+.Li json
+callback plugin, results can be stored in a directory on the filesystem.
+.Nm
+can read, filter, sort and tabulate the information for display.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl J
+Produce output in JSON format.
+.It Fl H
+Suppress headers in output making it more easily parsed by scripts.
+.It Fl f Ar file
+Specify a JSON input file.
+This can be used multiple times.
+.It Fl o Ar fields, ...
+A comma-separated list of table fields to display.
+.It Fl s Ar fields, ...
+A comma-separated list of table fields to sort the rows by.
+.It Fl h
+Show a brief usage summary of the program.
+.It Fl V
+Show version of program.
+.El
+.Sh TABLES
+When specifying a table, table names are case-insensitive and can be
+abbreviated to just their initial characters.
+Many of the tables show information derived from the initial
+.Li gather_facts
+task or other fact gathering tasks.
+.Nm
+is, therefore, reliant on the presence of these tasks' output somewhere in the
+input JSON files.
+In the following lists of fields, a
+.Sq +
+is used to mark those fields that are included in the default output while
+.Sq \-
+is used to mark those that are elided by default.
+.Ss Summary
+This is the default table if no filter is specified.
+Available fields are as follows.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta CHANGED Ta The number of tasks resulting in a change.
+.It + Ta FAILURES Ta The number or tasks that failed, including ignored and rescued failures.
+.It - Ta IGNORED Ta The number or tasks that failed where the failure was ignored.
+.It - Ta RESCUED Ta The number or tasks that failed but where processing continued following a rescue block.
+.It - Ta FATAL Ta The number or tasks that failed.
+.It + Ta OK Ta The number of tasks that resulted in no change.
+.It + Ta SKIPPED Ta The number of tasks that were skipped.
+.It + Ta DATE Ta The date when the playbook was run.
+.It - Ta TIME Ta The time when the playbook was run.
+.It + Ta HOST Ta The name of the host.
+.El
+.Ss Tasks
+Given a filter that selects a single host, the default is to show this table.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta NUMBER Ta A sequence number of the task.
+.It + Ta STATUS Ta The output status in an abbreviated form.
+.It - Ta ACTION Ta The ansible module used for the task.
+.It + Ta DESCRIPTION Ta Description of the task.
+.El
+.Pp
+Sequence numbers can be used in filters to provide detailed output for a
+particular task.
+The status field remains blank for tasks that resulted in no change,
+.Sq C
+for changes and
+.Sq F
+for failed tasks.
+.Ss Fs
+This table shows details of local filesystems reported in the gathered facts.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta DEVICE Ta The system device.
+.It + Ta FSTYPE Ta The type of filesystem.
+.It + Ta TOTAL Ta The total amount of space on the filesystem.
+.It - Ta SIZE Ta ?
+.It + Ta USED Ta Amount of space currently in use.
+.It + Ta AVAIL Ta Amount of space available for use.
+.It + Ta CAPACITY Ta Percentage of space in use.
+.It + Ta MOUNTPOINT Ta Directory at which the filesystem is mounted.
+.El
+.Ss Net
+This table shows details of network interfaces reported in the gathered
+facts.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta INTERFACE Ta The network interface.
+.It + Ta IP Ta The IPv4 address assigned to the interface.
+.It - Ta NETMASK Ta The IPv4 netmask associated with interface.
+.It - Ta IPV6 Ta The IPv6 address assigned to the interface.
+.It + Ta TYPE Ta The device type of the interface.
+.It + Ta SPEED Ta The speed of the connection.
+.It - Ta MTU Ta The maximum transmission unit size.
+.It + Ta MAC Ta The ethernet address of the interface.
+.El
+.Ss OS
+This table shows details of the installed operating system on the host.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta SYSTEM Ta The name of the operating system,
+.It + Ta DISTRIBUTION Ta The name of the operating distribution, e.g. Debian
+.It + Ta VERSION Ta The version of the distribution.
+.It - Ta MAJOR Ta The major version of the distribution.
+.It - Ta FAMILY Ta The operating system distribution type, e.g. RedHat.
+.It + Ta KERNEL Ta The version of the kernel, such as of Linux.
+.It - Ta PACKAGE Ta The native packaging system used.
+.It - Ta SERVICE Ta The native init system used.
+.It - Ta UPTIME Ta The machine uptime in seconds.
+.El
+.Ss Python
+This table shows details of the Python installation used by ansible.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta IMPLEMENTATION Ta The Python implementation, e.g. CPython.
+.It + Ta VERSION Ta The python version number.
+.It + Ta BINARY Ta The filesystem location of the Python executable.
+.It - Ta MAJOR Ta The major version number.
+.It - Ta MINOR Ta The minor version number.
+.It - Ta MICRO Ta The micro version number.
+.It - Ta LEVEL Ta The patch level.
+.El
+.Ss Cpu
+This table shows details of the computer processor.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta ARCH Ta The name of the architecture, e.g x86_64.
+.It - Ta MACHINE Ta The machine type.
+.It + Ta MEMORY Ta The amount of RAM.
+.It + Ta CORES Ta The number of cpu cores.
+.It + Ta COUNT Ta The number of threads per core.
+.It + Ta PRODUCT Ta The product type of the machine.
+.It - Ta FORM Ta The form factor of the machine.
+.El
+.Ss Swap
+This table shows details of sansible-playbookwap space.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta MEMORY Ta The amount of RAM.
+.It - Ta ALLOC Ta The amount of allocated swap space.
+.It - Ta RESERVED Ta The amount of reserved swap space.
+.It + Ta FREE Ta The amount of free swap space.
+.It + Ta TOTAL Ta The total amount of swap space.
+.El
+.Ss Virt
+This table shows details of virtualisation.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta ROLE Ta Whether the host serves as a host or guest.
+.It + Ta TYPE Ta The particular virtualisation style in use, e.g. kvm.
+.El
+.Ss Docker
+This table presents information from the
+.Qq docker_image_info
+or
+.Qq podman_image_info
+ansible task.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta REPOSITORY Ta The repository used to build the image.
+.It + Ta TAG Ta The image tag.
+.It + Ta HOST Ta The name of the host.
+.It + Ta CREATED Ta The date and time when the image was created.
+.El
+.Ss Packages
+This table presents information from the
+.Qq package_facts
+ansible task.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta NAME Ta The name of the package.
+.It + Ta VERSION Ta The version of the packaged software.
+.It + Ta RELEASE Ta The release number for the actual package.
+.It - Ta EPOCH Ta The epoch number for the package.
+.It - Ta ARCH Ta The architecture for which the package was built.
+.It - Ta SOURCE Ta The package system in use, e.g. rpm.
+.El
+.Ss Services
+This table presents information from the
+.Qq service_facts
+ansible task.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta NAME Ta The name of the service.
+.It + Ta STATE Ta Whether the service is active.
+.It - Ta STATUS Ta The status of the service.
+.It - Ta SOURCE Ta The init system in use, e.g. sysv.
+.El
+.Ss Zpool
+This table presents information from the
+.Qq zpool_facts
+ansible task.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta NAME Ta The name of the pool.
+.It + Ta SIZE Ta The size of the pool.
+.It + Ta ALLOC Ta Data physically present on disk.
+.It + Ta FREE Ta Unused space.
+.It + Ta FRAG Ta Percentage data fragmentation.
+.It + Ta CAP Ta Percentage of pool capacity in use.
+.It + Ta DEDUP Ta Data deduplication ratio.
+.It + Ta HEALTH Ta Health of the pool.
+.El
+.Ss Zfs
+This table presents information from the
+.Qq zfs_facts
+ansible task.
+It can be useful to invoke the task with an ansible loop taking the names of
+pools.
+.Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
+.It + Ta HOST Ta The name of the host.
+.It + Ta NAME Ta The name of the dataset.
+.It + Ta USED Ta Amount of space in use by the dataset.
+.It + Ta AVAIL Ta Space available in the dataset.
+.It + Ta REFER Ta Data logically referenced in the pool.
+.It - Ta ATIME Ta Whether access times are enabled.
+.It - Ta COMPRESSION Ta Compression algorithm, if any, in use.
+.It - Ta COMPRESSRATIO Ta Compression ratio for existing stored data.
+.It - Ta DEDUP Ta Whether deduplication is enabled.
+.It - Ta QUOTA Ta Space allotted to the dataset.
+.It + Ta MOUNTPOINT Ta The mountpoint for the dataset.
+.El
+.Sh FILTERS
+Following the table, all subsequent positional arguments are treated as filter
+specifications.
+A filter can be in one of several forms:
+.Bl -tag -width "field!=value" -compact -offset indent
+.It hostname
+A literal machine hostname.
+.It number
+A task number, this is only applicable to the tasks table.
+.It field=value
+Compare a specific field to a literal value.
+.It field!=value
+Compare a specific field to a literal value.
+.It field>value
+Numeric of lexicographic comparison of a field.
+.It field<value
+Numeric of lexicographic comparison of a field.
+.It field~regex
+Match string represenation of field against a regular expression.
+.It field!~regex
+Negative match of field against a regular expression.
+.El
+Only table rows where all filters evaluate to true will be displayed.
+.Sh EXAMPLES
+Summarise results where one or more tasks failed.
+.Dl ajmon 'fail>0'
+.Pp
+Dump JSON extract corresponding to task 37 on example host.
+.Dl ajmon -J example 37
+.Pp
+List results of all template tasks run on the example host.
+.Dl ajmon tasks act=template example
+.Pp
+Get a list of the different system models in use.
+.Dl ajmon cpu -H -o prod -s prod | uniq
+.Sh FILES
+.Bl -tag -width 6n
+.It Pa /var/log/ansible
+By default, this is where
+.Nm
+looks for log files.
+Log files are json files that can optionally be compressed with
+.Xr gzip 1 .
+.It Pa /etc/ansible-json-monitor.conf
+This is a configuration file used to point
+.Nm
+to an alternative location for the log files.
+For example, the following contents would reaffirm the defaults:
+.Bd -literal -offset indent -compact
+path = "/var/log/ansible"
+.Ed
+.El
+.Sh "SEE ALSO"
+.Xr ansible 1 ,
+.Xr ansible-playbook 1 ,
+.Xr ansible-pull 1

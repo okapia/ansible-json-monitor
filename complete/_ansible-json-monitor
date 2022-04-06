@@ -1,0 +1,86 @@
+#compdef ajmon
+
+local table ign ret=1
+local -a context state line expl tables fields
+local -A opt_args
+
+tables=(summary df fs net os cpu docker packages services swap python tasks virt zpool zfs)
+fields=( host )
+(( $#words > 2 )) && ign='!'
+
+_arguments -s -S \
+  "${ign}-h[display help information]" \
+  '(-H -o -s)-J[produce JSON output for tasks and facts]' \
+  '(-J)-H[suppress header line when printing tables]' \
+  "${ign}-V[display version information]" \
+  '*-f+[specify input json file]:json file:_files -g "*.json(|.gz)(-.)"' \
+  '(-J)-o[specify output fields]: :->output-fields' \
+  '(-J)-s[specify sort order]: :->output-fields' \
+  '::table:->tables' \
+  '*: :->filters' && ret=0
+
+if (( CURRENT > 2 )); then
+  table="${tables[(r)$line[1]*]:-tasks}"
+else
+  table=summary
+fi
+
+case $table in
+  df|fs|zfs) fields+=( used avail capacity mountpoint ) ;|
+  os|python|packages) fields+=( version major ) ;|
+  os|python) fields+=( version ) ;|
+  df|fs|swap) fields+=( total ) ;|
+  cpu|packages) fields+=( arch ) ;|
+  packages|services) fields+=( source ) ;|
+  packages|services|summary|zpool|zfs) fields+=( name ) ;|
+  df|fs|zpool) fields+=( size ) ;|
+  swap|zpool) fields+=( alloc free ) ;|
+  zpool|zfs) fields+=( dedup ) ;|
+
+  df|fs) fields+=( device fstype total size ) ;;
+  net) fields+=( interface ip netmask ipv6 type speed mtu mac ) ;;
+  os) fields+=( system distribution family kernel packages services uptime ) ;;
+  python) fields+=( implementation binary minor micro level ) ;;
+  cpu) fields+=( arch machine memory cores count product form ) ;;
+  swap) fields+=( memory reserved ) ;;
+  docker) fields+=( repository tag id created ) ;;
+  packages) fields+=( release epoch ) ;;
+  services) fields+=( state status source ) ;;
+  virt) fields+=( type role ) ;;
+  zpool) fields+=( frag cap health ) ;;
+  zfs) fields+=( refer atime compression compressration quota );;
+  summary) fields+=( changed failures ok skipped date time ignored rescued fatal ) ;;
+  tasks) fields=( number status action description );;
+esac
+
+while (( $#state )); do
+  case $state[1] in
+    tables)
+      _wanted -C "$context[1]" tables expl 'table' compadd -a tables && ret=0
+    ;;
+    output-fields)
+      _wanted -C "$context[1]" fields expl 'field' _sequence compadd -a - fields && ret=0
+    ;;
+    filters)
+      [[ $table = tasks && $#line -lt 3 && $PREFIX != *[^0-9]* ]] &&
+          _message -e tasks 'task number'
+      config=${${${${(f)"$(</etc/ansible-json-monitor.conf)"}:#path }#*[\"\']}%[\"\']}
+      if [[ -d $config ]]; then
+        _wanted -C "$context[1]" hosts expl host compadd $config/*.json*(:t:r:r) && ret=0
+      else
+        _hosts
+      fi
+      if compset -P '*[=~><]'; then
+        _message -e values value
+      elif compset -P "(${(j.|.)fields})"; then
+        _describe -t operators operator '( \=:equals \~:matches \>:greater \<:less )' -S ''
+      else
+        _wanted -C "$context[1]" fields expl 'filter field' compadd -S '' -a - fields && ret=0
+      fi
+    ;;
+  esac
+  shift state
+  shift context
+done
+
+return ret
