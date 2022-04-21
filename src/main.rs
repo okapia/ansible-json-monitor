@@ -517,7 +517,7 @@ fn distill_os_facts(
         + < KERNEL: String => { &|fact: &Facts| Ok(fact.value.string("ansible_kernel")?.to_string()) },
         - < PACKAGE: String => { &|fact: &Facts| Ok(fact.value.string("ansible_pkg_mgr")?.to_string()) },
         - < SERVICE: String => { &|fact: &Facts| Ok(fact.value.string("ansible_service_mgr")?.to_string()) },
-        - > UPTIME: i64 => { &|fact: &Facts| Ok(fact.value.number("ansible_uptime_seconds")?) },
+        - > UPTIME: i64 => { &|fact: &Facts| fact.value.number("ansible_uptime_seconds") },
     });
     Ok(())
 }
@@ -535,9 +535,9 @@ fn distill_python_facts(
         + < IMPLEMENTATION: String => { &|(_,py): (_, &serde_json::Value)| Ok(py.string("type")?.to_string()) },
         + > VERSION: String => { &|(fact,_): (&Facts,_)| Ok(fact.value.string("ansible_python_version")?.to_string()) },
         + < BINARY: String => { &|(_,py): (_, &serde_json::Value)| Ok(py.string("executable")?.to_string()) },
-        - < MAJOR: i64 => { &|(_,py): (_, &serde_json::Value)| Ok(py.object("version")?.number("major")?) },
-        - < MINOR: i64 => { &|(_,py): (_, &serde_json::Value)| Ok(py.object("version")?.number("minor")?) },
-        - < MICRO: i64 => { &|(_,py): (_, &serde_json::Value)| Ok(py.object("version")?.number("micro")?) },
+        - < MAJOR: i64 => { &|(_,py): (_, &serde_json::Value)| py.object("version")?.number("major") },
+        - < MINOR: i64 => { &|(_,py): (_, &serde_json::Value)| py.object("version")?.number("minor") },
+        - < MICRO: i64 => { &|(_,py): (_, &serde_json::Value)| py.object("version")?.number("micro") },
         - < LEVEL: String => { &|(_,py): (_, &serde_json::Value)| Ok(py.object("version")?.string("releaselevel")?.to_string()) },
     });
     Ok(())
@@ -556,7 +556,7 @@ fn distill_cpu_facts(
         - < MACHINE: String => { &|fact: &Facts| Ok(fact.value.string("ansible_machine")?.to_string()) },
         + > MEMORY: Bytes => { &|fact: &Facts| Ok(Bytes(fact.value.number("ansible_memtotal_mb")? << 20)) },
         + > CORES: i64 => { &|fact: &Facts| Ok(fact.value.number("ansible_processor_cores").unwrap_or(1)) },
-        + > COUNT: i64 => { &|fact: &Facts| Ok(fact.value.number_coerce("ansible_processor_count")?) },
+        + > COUNT: i64 => { &|fact: &Facts| fact.value.number_coerce("ansible_processor_count") },
         + < PRODUCT: String => { &|fact: &Facts| Ok(fact.value.string("ansible_product_name")?.to_string()) },
         - < FORM: String => { &|fact: &Facts| Ok(fact.value.string("ansible_form_factor")?.to_string()) },
     });
@@ -665,7 +665,7 @@ fn distill_docker_info(
         + < REPOSITORY: String => { &|(val,_): (&serde_json::Value,_)| {
             if let Ok(repos) = val.array("RepoTags")
                     .and_then(|x| if x.is_empty() { Err(Fail::Msg("empty".to_string())) } else { Ok(x) }) {
-                let repo = repos[0].as_str().ok_or_else(|| Fail::Type("string", "what"))?;
+                let repo = repos[0].as_str().ok_or(Fail::Type("string", "what"))?;
                 if let Some(begin) = repo.rfind(':') {
                     Ok(repo[..begin].to_string())
                 } else {
@@ -678,7 +678,7 @@ fn distill_docker_info(
         + < TAG: String => { &|(val,_): (&serde_json::Value,_)| {
             if let Ok(repos) = val.array("RepoTags")
                     .and_then(|x| if x.is_empty() { Err(Fail::Msg("empty".to_string())) } else { Ok(x) }) {
-                let repo = repos[0].as_str().ok_or_else(|| Fail::Type("string", "what"))?;
+                let repo = repos[0].as_str().ok_or(Fail::Type("string", "what"))?;
                 if let Some(begin) = repo.rfind(':') {
                     Ok(repo[begin + 1..].to_string())
                 } else {
