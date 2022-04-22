@@ -1242,7 +1242,6 @@ fn main() {
 
     let mut table: Option<Table> = None;
     let mut task_num: Option<u32> = None;
-    let mut in_files;
     let mut host_filter = Vec::new();
     let mut field_filter = Vec::new();
     let mut first: bool = true;
@@ -1287,7 +1286,7 @@ fn main() {
     }
 
     // Get JSON files on which we'll operate
-    in_files = if !opt.infile.is_empty() {
+    let mut in_files = if !opt.infile.is_empty() {
         opt.infile
     } else {
         let path = match getcfg() {
