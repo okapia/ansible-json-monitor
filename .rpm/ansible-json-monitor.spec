@@ -24,10 +24,12 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/etc
 cp -a * %{buildroot}
 echo 'path = "%{_localstatedir}/log/ansible"' > %{buildroot}%{_sysconfdir}/ansible-json-monitor.conf
-mkdir -p %{buildroot}%{_datadir}/zsh/site-functions
-mkdir -p %{buildroot}%{_mandir}/man1
+mkdir -m 0755 -p %{buildroot}%{_datadir}/zsh/site-functions
+mkdir -m 0755 -p %{buildroot}%{_mandir}/man1
 cp ../../../../../complete/_ansible-json-monitor %{buildroot}%{_datadir}/zsh/site-functions
+chmod 644 %{buildroot}%{_datadir}/zsh/site-functions/_ansible-json-monitor
 cp ../../../../../doc/ajmon.1 %{buildroot}%{_mandir}/man1
+chmod 644 %{buildroot}%{_mandir}/man1/ajmon.1
 
 %clean
 rm -rf %{buildroot}
