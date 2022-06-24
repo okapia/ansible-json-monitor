@@ -534,7 +534,7 @@ fn distill_python_facts(
     header: bool,
 ) -> Result<(), Fail> {
     tabulate!(fields, sort_by = (HOST), filters, header, facts.iter()
-        .map(|fact| (fact, fact.value.object("ansible_python").unwrap())), {
+        .filter_map(|fact| fact.value.object("ansible_python").map(|o| (fact,o)).ok()), {
         + < HOST: String => { &|(fact,_): (&Facts,_)| Ok(fact.host.clone()) },
         + < IMPLEMENTATION: String => { &|(_,py): (_, &serde_json::Value)| Ok(py.string("type")?.to_string()) },
         + > VERSION: String => { &|(fact,_): (&Facts,_)| Ok(fact.value.string("ansible_python_version")?.to_string()) },
