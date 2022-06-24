@@ -410,9 +410,13 @@ fn gather_facts_errors(
                     && value // not filtered
                         .object("invocation")
                         .and_then(|x| x.object("module_args"))
-                        .and_then(|x| x.string("filter"))
+                        .and_then(|x| x.get("filter").ok_or(Fail::Missing("filter")))
                         .ok()
-                        .map_or(true, |x| x == "*")
+                        .map_or(true, |x| match x {
+                            serde_json::Value::Array(a) => a.is_empty(),
+                            serde_json::Value::String(s) => s == "*",
+                            _ => true,
+                        })
             })
         {
             match (value.get("results"), info) {
