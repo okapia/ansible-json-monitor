@@ -1,6 +1,6 @@
 [package]
 name = "ansible-json-monitor"
-version = "1.0.0"
+version = "1.0.1"
 description = "Simple ansible monitoring using json output"
 homepage = "https://github.com/okapia/ansible-json-monitor"
 authors = ["okapia"]
