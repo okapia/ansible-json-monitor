@@ -47,7 +47,7 @@ Ansible typically starts by running the setup action to gather a whole range of
 number of different tables using based on the extracted data. So, for example, you
 can see the operating system versions as follows:
 
-    ajmon os
+    ajmon -f output.json.gz os
     HOST    SYSTEM  DISTRIBUTION VERSION KERNEL
     example FreeBSD FreeBSD         12.0 12.0-RELEASE-p8
 
