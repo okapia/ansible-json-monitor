@@ -270,8 +270,15 @@ Dump JSON extract corresponding to task 37 on example host.
 List results of all template tasks run on the example host.
 .Dl ajmon tasks act=template example
 .Pp
+List failed tasks run on the example host, taking advantage of
+being able to abbreviate tasks to just t and status to just s.
+.Dl ajmon t example 's=f'
+.Pp
 Get a list of the different system models in use.
 .Dl ajmon cpu -H -o prod -s prod | uniq
+.Pp
+List mdraid filesystems in use.
+.Dl ajmon df 'device~^/dev/md'
 .Sh FILES
 .Bl -tag -width 6n
 .It Pa /var/log/ansible
