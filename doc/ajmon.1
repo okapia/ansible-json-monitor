@@ -277,6 +277,9 @@ being able to abbreviate tasks to just t and status to just s.
 Get a list of the different system models in use.
 .Dl ajmon cpu -H -o prod -s prod | uniq
 .Pp
+List all systems that have python3-jmespath installed.
+.Dl ajmon packages -H -o host name=python3-jmespath
+.Pp
 List mdraid filesystems in use.
 .Dl ajmon df 'device~^/dev/md'
 .Sh FILES
