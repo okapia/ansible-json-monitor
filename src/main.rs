@@ -240,17 +240,12 @@ fn getcfg() -> Result<String, Fail> {
 }
 
 /// representation of the outcome of an ansible task
-#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialOrd, Ord, PartialEq, Eq)]
 enum Status {
     Ok,
     Changed,
+    #[default]
     Failed,
-}
-
-impl Default for Status {
-    fn default() -> Status {
-        Status::Failed
-    }
 }
 
 impl fmt::Display for Status {
