@@ -168,9 +168,9 @@ This table shows details of virtualisation.
 .El
 .Ss Docker
 This table presents information from the
-.Qq docker_image_info
+.Qq community.docker.docker_image_info
 or
-.Qq podman_image_info
+.Qq containers.podman.podman_image_info
 ansible task.
 .Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
 .It + Ta HOST Ta The name of the host.
@@ -181,7 +181,7 @@ ansible task.
 .El
 .Ss Packages
 This table presents information from the
-.Qq package_facts
+.Qq ansible.builtin.package_facts
 ansible task.
 .Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
 .It + Ta HOST Ta The name of the host.
@@ -194,7 +194,7 @@ ansible task.
 .El
 .Ss Services
 This table presents information from the
-.Qq service_facts
+.Qq ansible.builtin.service_facts
 ansible task.
 .Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
 .It + Ta HOST Ta The name of the host.
@@ -205,7 +205,7 @@ ansible task.
 .El
 .Ss Zpool
 This table presents information from the
-.Qq zpool_facts
+.Qq community.general.zpool_facts
 ansible task.
 .Bl -column "X" "FIELDXXXXXXX" "DescX" -offset left
 .It + Ta HOST Ta The name of the host.
@@ -220,7 +220,7 @@ ansible task.
 .El
 .Ss Zfs
 This table presents information from the
-.Qq zfs_facts
+.Qq community.general.zfs_facts
 ansible task.
 It can be useful to invoke the task with an ansible loop taking the names of
 pools.
