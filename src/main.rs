@@ -1154,6 +1154,7 @@ fn task<P: AsRef<Path>>(
         "ini_file" => results_path,
         "lineinfile" => results_lineinfile,
         "package" => results_package,
+        "replace" => results_path,
         "setup" => results_setup,
         "service" => results_name,
         "slurp" => results_slurp,
