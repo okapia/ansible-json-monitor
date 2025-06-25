@@ -1,8 +1,8 @@
+extern crate clap;
 extern crate chrono;
 extern crate libflate;
 extern crate rayon;
 extern crate serde_json;
-extern crate structopt;
 extern crate toml;
 extern crate unicode_width;
 
@@ -21,7 +21,7 @@ use std::io::{self, Seek, SeekFrom, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use structopt::StructOpt;
+use clap::{Parser, ColorChoice};
 use toml::Value;
 use unicode_width::UnicodeWidthStr;
 
@@ -205,30 +205,30 @@ impl TryFrom<&OsString> for Table {
     }
 }
 
-#[derive(StructOpt)]
-#[structopt(
+#[derive(Parser)]
+#[command(
     name = "ajmon",
     about = "Simple ansible monitoring based in JSON files.",
-    global_settings = &[structopt::clap::AppSettings::ColorNever,],
+    color = ColorChoice::Never,
 )]
 struct Opt {
     /// specify an input JSON file
-    #[structopt(short = "f", number_of_values = 1)]
+    #[arg(short = 'f', num_args = 1)]
     infile: Vec<PathBuf>,
     /// specify output fields
-    #[structopt(short = "o", parse(from_os_str))]
+    #[arg(short = 'o')]
     fields: Option<OsString>,
     /// specify field to order summary by
-    #[structopt(short = "s", parse(from_os_str))]
+    #[arg(short = 's')]
     order: Option<OsString>,
     /// suppress header line when printing tables
-    #[structopt(short = "H")]
+    #[arg(short = 'H')]
     no_header: bool,
     /// produce JSON output for tasks and facts
-    #[structopt(short = "J")]
+    #[arg(short = 'J')]
     json: bool,
     /// specify filters to apply to tables
-    #[structopt(parse(from_os_str))]
+    #[arg()]
     filters: Vec<OsString>,
 }
 
@@ -1238,7 +1238,7 @@ fn summary(
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let mut table: Option<Table> = None;
     let mut task_num: Option<u32> = None;
@@ -1433,4 +1433,10 @@ fn main() {
             ::std::process::exit(1);
         }
     }
+}
+
+#[test]
+fn verify_cli() {
+    use clap::CommandFactory;
+    Opt::command().debug_assert()
 }
