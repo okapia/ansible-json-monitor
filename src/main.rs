@@ -1,3 +1,5 @@
+#![allow(clippy::upper_case_acronyms)]
+
 extern crate clap;
 extern crate chrono;
 extern crate libflate;
