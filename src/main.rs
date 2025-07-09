@@ -403,6 +403,7 @@ fn gather_facts_errors(
             .iter()
             .filter(|(_host, value)| {
                 value.string("action").ok().map_or(false, |x| x == fact_class || Some(x) == fact_alias)
+                    && !value.bool("failed").unwrap_or(false) // not failed
                     && !value.bool("skipped").unwrap_or(false) // not skipped
                     && value // not filtered
                         .object("invocation")
