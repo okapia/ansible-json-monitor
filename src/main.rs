@@ -402,7 +402,7 @@ fn gather_facts_errors(
             .ok_or(Fail::Type("hosts", "object"))?
             .iter()
             .filter(|(_host, value)| {
-                value.string("action").ok().map_or(false, |x| x == fact_class || Some(x) == fact_alias)
+                value.string("action").ok().is_some_and(|x| x == fact_class || Some(x) == fact_alias)
                     && !value.bool("failed").unwrap_or(false) // not failed
                     && !value.bool("skipped").unwrap_or(false) // not skipped
                     && value // not filtered
@@ -410,7 +410,7 @@ fn gather_facts_errors(
                         .and_then(|x| x.object("module_args"))
                         .and_then(|x| x.get("filter").ok_or(Fail::Missing("filter")))
                         .ok()
-                        .map_or(true, |x| match x {
+                        .is_none_or(|x| match x {
                             serde_json::Value::Array(a) => a.is_empty(),
                             serde_json::Value::String(s) => s == "*",
                             _ => true,
@@ -444,7 +444,7 @@ fn gather_facts_errors(
     Ok(facts)
 }
 
-fn gather_facts(dir: &PathBuf, fact_class: &str) -> Vec<Result<Facts, Fail>> {
+fn gather_facts(dir: &Path, fact_class: &str) -> Vec<Result<Facts, Fail>> {
     match gather_facts_errors(dir, fact_class) {
         Ok(v) => v,
         Err(e) => vec![Err(e)],
@@ -1112,7 +1112,7 @@ fn task<P: AsRef<Path>>(
 
     let status = if thishost
         .get("failed")
-        .map_or(false, |x| x.as_bool().unwrap())
+        .is_some_and(|x| x.as_bool().unwrap())
     {
         Status::Failed
     } else if thishost.bool("changed")? {
@@ -1420,7 +1420,7 @@ fn main() {
         all.sort_by(|a, b| a.host.cmp(&b.host).then_with(|| b.age.cmp(&a.age)));
         all.dedup_by_key(|x| x.host.to_string());
         if opt.json {
-            for i in &all {
+            if let Some(i) = all.first() {
                 println!("{:#}", i.value);
                 ::std::process::exit(1);
             }
