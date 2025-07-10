@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 
-extern crate clap;
 extern crate chrono;
+extern crate clap;
 extern crate libflate;
 extern crate rayon;
 extern crate serde_json;
@@ -9,10 +9,12 @@ extern crate toml;
 extern crate unicode_width;
 
 use chrono::prelude::*;
+use clap::{ColorChoice, Parser};
 use itertools::{Either, Itertools};
 use libflate::gzip::Decoder;
 use rayon::prelude::*;
 use regex::Regex;
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::ffi::OsString;
@@ -23,9 +25,9 @@ use std::io::{self, Seek, SeekFrom, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use clap::{Parser, ColorChoice};
 use toml::Value;
 use unicode_width::UnicodeWidthStr;
+use version_compare::Version;
 
 mod tabulate;
 
@@ -103,6 +105,34 @@ impl std::str::FromStr for Percentage {
         let p = s[..l].parse::<i64>()?;
 
         Ok(Percentage(p))
+    }
+}
+
+#[derive(Default, Debug, PartialEq, Eq)]
+struct Ver(String);
+impl std::fmt::Display for Ver {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+impl std::str::FromStr for Ver {
+    type Err = Fail;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Ver(s.to_string()))
+    }
+}
+impl Ord for Ver {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if let (Some(a), Some(b)) = (Version::from(&self.0[..]), Version::from(&other.0[..])) {
+            a.compare(&b).ord().unwrap()
+        } else {
+            self.0.cmp(&other.0)
+        }
+    }
+}
+impl PartialOrd for Ver {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -368,7 +398,7 @@ fn gather_facts_errors(
                 "{}: {}",
                 filename.display(),
                 e
-            )))])
+            )))]);
         }
     };
     let (fact_alias, info) = match fact_class {
@@ -513,10 +543,10 @@ fn distill_os_facts(
         + < HOST: String => { &|fact: &Facts| Ok(fact.host.clone()) },
         + < SYSTEM: String => { &|fact: &Facts| Ok(fact.value.string("ansible_system")?.to_string()) },
         + < DISTRIBUTION: String => { &|fact: &Facts| Ok(fact.value.string("ansible_distribution")?.to_string()) },
-        + > VERSION: String => { &|fact: &Facts| Ok(fact.value.string("ansible_distribution_version")?.to_string()) },
+        + > VERSION: Ver => { &|fact: &Facts| Ok(Ver(fact.value.string("ansible_distribution_version")?.to_string())) },
         - > MAJOR: String => { &|fact: &Facts| Ok(fact.value.string("ansible_distribution_major_version").unwrap_or("unknown").to_string()) },
         - < FAMILY: String => { &|fact: &Facts| Ok(fact.value.string("ansible_os_family")?.to_string()) },
-        + < KERNEL: String => { &|fact: &Facts| Ok(fact.value.string("ansible_kernel")?.to_string()) },
+        + < KERNEL: Ver => { &|fact: &Facts| Ok(Ver(fact.value.string("ansible_kernel")?.to_string())) },
         - < PACKAGE: String => { &|fact: &Facts| Ok(fact.value.string("ansible_pkg_mgr")?.to_string()) },
         - < SERVICE: String => { &|fact: &Facts| Ok(fact.value.string("ansible_service_mgr")?.to_string()) },
         - > UPTIME: i64 => { &|fact: &Facts| fact.value.number("ansible_uptime_seconds") },
@@ -535,7 +565,7 @@ fn distill_python_facts(
         .filter_map(|fact| fact.value.object("ansible_python").map(|o| (fact,o)).ok()), {
         + < HOST: String => { &|(fact,_): (&Facts,_)| Ok(fact.host.clone()) },
         + < IMPLEMENTATION: String => { &|(_,py): (_, &serde_json::Value)| Ok(py.string("type")?.to_string()) },
-        + > VERSION: String => { &|(fact,_): (&Facts,_)| Ok(fact.value.string("ansible_python_version")?.to_string()) },
+        + > VERSION: Ver => { &|(fact,_): (&Facts,_)| Ok(Ver(fact.value.string("ansible_python_version")?.to_string())) },
         + < BINARY: String => { &|(_,py): (_, &serde_json::Value)| Ok(py.string("executable")?.to_string()) },
         - < MAJOR: i64 => { &|(_,py): (_, &serde_json::Value)| py.object("version")?.number("major") },
         - < MINOR: i64 => { &|(_,py): (_, &serde_json::Value)| py.object("version")?.number("minor") },
@@ -619,7 +649,7 @@ fn distill_package_facts(
         .flatten(), {
         + < HOST: String => { &|(_,host): (_,&str)| Ok(host.to_string()) },
         + < NAME: String => { &|(val,_): (&serde_json::Value,_)| Ok(val.string("name")?.to_string()) },
-        + > VERSION: String => { &|(val,_): (&serde_json::Value,_)| Ok(val.string("version")?.to_string()) },
+        + > VERSION: Ver => { &|(val,_): (&serde_json::Value,_)| Ok(Ver(val.string("version")?.to_string())) },
         + > RELEASE: String => { &|(val,_): (&serde_json::Value,_)| Ok(val.string("release")?.to_string()) },
         - > EPOCH: i64 => { &|(val,_): (&serde_json::Value,_)| Ok(val.number("epoch").unwrap_or(0i64)) },
         - < ARCH: String => { &|(val,_): (&serde_json::Value,_)| Ok(val.string("arch").unwrap_or("(none)").to_string()) },
@@ -1110,10 +1140,7 @@ fn task<P: AsRef<Path>>(
         return Ok(());
     }
 
-    let status = if thishost
-        .get("failed")
-        .is_some_and(|x| x.as_bool().unwrap())
-    {
+    let status = if thishost.get("failed").is_some_and(|x| x.as_bool().unwrap()) {
         Status::Failed
     } else if thishost.bool("changed")? {
         Status::Changed
