@@ -282,6 +282,12 @@ List all systems that have python3-jmespath installed.
 .Pp
 List mdraid filesystems in use.
 .Dl ajmon df 'device~^/dev/md'
+.Pp
+First identify kernels in use for a particular OS release,
+filtering also by hostname and then list systems that don't
+run what was determined to be the newest version.
+.Dl ajmon os -H MAJOR=8 'HOST~^d' -o kernel -s kernel|uniq -c
+.Dl ajmon os -H MAJOR=8 'HOST~^d' -o host 'kernel!=5.15.0-309.180.4.el8uek.x86_64'
 .Sh FILES
 .Bl -tag -width 6n
 .It Pa /var/log/ansible
