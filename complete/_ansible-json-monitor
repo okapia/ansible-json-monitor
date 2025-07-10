@@ -20,7 +20,7 @@ _arguments -s -S \
   '*: :->filters' && ret=0
 
 if (( CURRENT > 2 )); then
-  table="${tables[(r)$line[1]*]:-tasks}"
+  table="${tables[(r)${(L)line[1]}*]:-tasks}"
 else
   table=summary
 fi
@@ -56,10 +56,10 @@ esac
 while (( $#state )); do
   case $state[1] in
     tables)
-      _wanted -C "$context[1]" tables expl 'table' compadd -a tables && ret=0
+      _wanted -C "$context[1]" tables expl 'table' compadd -M "m:{A-Z}={a-z}" -a tables && ret=0
     ;;
     output-fields)
-      _wanted -C "$context[1]" fields expl 'field' _sequence compadd -a - fields && ret=0
+      _wanted -C "$context[1]" fields expl 'field' _sequence compadd -M "m:{A-Z}={a-z}" - -a fields && ret=0
     ;;
     filters)
       [[ $table = tasks && $#line -lt 3 && $PREFIX != *[^0-9]* ]] &&
@@ -72,10 +72,10 @@ while (( $#state )); do
       fi
       if compset -P '*[=~><]'; then
         _message -e values value
-      elif compset -P "(${(j.|.)fields})"; then
-        _describe -t operators operator '( \=:equals \~:matches \>:greater \<:less )' -S ''
+      elif compset -P "(#i)(${(j.|.)fields})"; then
+        _describe -t operators operator '( \!=:unequal \=:equal \~:match \>:greater \<:less )' -S ''
       else
-        _wanted -C "$context[1]" fields expl 'filter field' compadd -S '' -a - fields && ret=0
+        _wanted -C "$context[1]" fields expl 'filter field' compadd -S '' -M "m:{A-Z}={a-z}" -a - fields && ret=0
       fi
     ;;
   esac
