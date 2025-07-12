@@ -276,7 +276,7 @@ impl std::str::FromStr for Status {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Fail {
     Msg(String),
     OsMsg(OsString),
@@ -287,16 +287,16 @@ enum Fail {
 impl fmt::Display for Fail {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Msg(m) => write!(fmt, "error: {}", m),
-            Self::OsMsg(m) => write!(fmt, "error: {:?}", m),
+            Self::Msg(m) => write!(fmt, "{}", m),
+            Self::OsMsg(m) => write!(fmt, "{:?}", m),
             Self::Missing(element) => write!(
                 fmt,
-                "error: json data didn't match assumptions: element {} missing",
+                "json data didn't match assumptions: element {} missing",
                 element
             ),
             Self::Type(expected, element) => write!(
                 fmt,
-                "error: json data didn't match assumptions: expected \"{}\" to be of type {}",
+                "json data didn't match assumptions: expected \"{}\" to be of type {}",
                 element, expected
             ),
         }
@@ -361,11 +361,7 @@ fn gather_facts_errors(
     let json = match open_json_file(filename) {
         Ok(j) => j,
         Err(e) => {
-            return Ok(vec![Err(Fail::Msg(format!(
-                "{}: {}",
-                filename.display(),
-                e
-            )))]);
+            return Ok(vec![Err(e)]);
         }
     };
     let (fact_alias, info) = match fact_class {
@@ -441,10 +437,13 @@ fn gather_facts_errors(
     Ok(facts)
 }
 
-fn gather_facts(dir: &Path, fact_class: &str) -> Vec<Result<Facts, Fail>> {
+fn gather_facts<'a>(dir: &'a Path, fact_class: &str) -> Vec<Result<Facts, (&'a Path, Fail)>> {
     match gather_facts_errors(dir, fact_class) {
-        Ok(v) => v,
-        Err(e) => vec![Err(e)],
+        Ok(v) => v
+            .iter()
+            .map(|r| <Result<Facts, Fail> as Clone>::clone(&r).map_err(|e| (dir, e)))
+            .collect(),
+        Err(e) => vec![Err((dir, e))],
     }
 }
 
@@ -755,21 +754,18 @@ fn play_end(json: &serde_json::Value) -> Result<chrono::DateTime<chrono::FixedOf
     )?)
 }
 
-fn get_summary(dir: &PathBuf) -> Vec<Result<Summary, Fail>> {
+fn get_summary(dir: &PathBuf) -> Vec<Result<Summary, (&PathBuf, Fail)>> {
     let json = match open_json_file(dir) {
         Ok(j) => j,
-        Err(e) => return vec![Err(Fail::Msg(format!("{}: {}", dir.display(), e)))],
+        Err(e) => return vec![Err((dir, Fail::Msg(e.to_string())))],
     };
     let end = match play_end(&json) {
         Ok(d) => d,
-        Err(e) => return vec![Err(Fail::Msg(format!("{}: {}", dir.display(), e)))],
+        Err(e) => return vec![Err((dir, Fail::Msg(format!("{e}"))))],
     };
     match json.object("stats").and_then(|o| {
         o.as_object().ok_or_else(|| {
-            Fail::Msg(format!(
-                "{}: JSON not well-formed - wrong type for element stats",
-                dir.display()
-            ))
+            Fail::Msg("JSON not well-formed - wrong type for element stats".to_string())
         })
     }) {
         Ok(stats) => stats
@@ -786,8 +782,9 @@ fn get_summary(dir: &PathBuf) -> Vec<Result<Summary, Fail>> {
                     host: host.to_string(),
                 })
             })
+            .map(|x| x.map_err(|e| (dir, e)))
             .collect(),
-        Err(e) => vec![Err(e)],
+        Err(e) => vec![Err((dir, e))],
     }
 }
 
@@ -1344,8 +1341,8 @@ fn main() {
                 Ok(v) => Either::Left(v),
                 Err(v) => Either::Right(v),
             });
-        for fail in &failures {
-            eprintln!("{}", fail);
+        for (path, fail) in &failures {
+            eprintln!("{}: {fail}", path.display());
         }
         match summary(
             successes,
@@ -1409,8 +1406,8 @@ fn main() {
                 Ok(v) => Either::Left(v),
                 Err(v) => Either::Right(v),
             });
-        for fail in &failures {
-            eprintln!("{}", fail);
+        for (path, fail) in &failures {
+            eprintln!("{}: {}", path.display(), fail);
         }
         // cut the list down to just the most recent for each host
         all.sort_by(|a, b| a.host.cmp(&b.host).then_with(|| b.age.cmp(&a.age)));
