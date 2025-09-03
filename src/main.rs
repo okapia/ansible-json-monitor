@@ -112,7 +112,7 @@ impl std::str::FromStr for Percentage {
 struct Ver(String);
 impl std::fmt::Display for Ver {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.0.fmt(f)
+        f.pad(self.0.as_str())
     }
 }
 impl std::str::FromStr for Ver {
@@ -133,39 +133,6 @@ impl Ord for Ver {
 impl PartialOrd for Ver {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
-    }
-}
-
-/// representation of fields in the main summary view
-#[derive(Debug)]
-enum Field {
-    Changed,
-    Date,
-    Failures,
-    Hostname,
-    Ok,
-    Skipped,
-}
-
-impl std::str::FromStr for Field {
-    type Err = Fail;
-    fn from_str(arg: &str) -> std::result::Result<Self, Fail> {
-        let arg = &arg.to_ascii_lowercase()[..];
-        if "date".starts_with(arg) {
-            Ok(Field::Date)
-        } else if "changed".starts_with(arg) {
-            Ok(Field::Changed)
-        } else if "failures".starts_with(arg) {
-            Ok(Field::Failures)
-        } else if "hostname".starts_with(arg) {
-            Ok(Field::Hostname)
-        } else if "ok".starts_with(arg) {
-            Ok(Field::Ok)
-        } else if "skipped".starts_with(arg) {
-            Ok(Field::Skipped)
-        } else {
-            Err(Fail::Msg(format!("unrecognised sort field: {}", arg)))
-        }
     }
 }
 
@@ -1044,10 +1011,10 @@ fn results_package(result: &serde_json::Value) -> Result<(), Fail> {
     if let Some(names) = args.stringarray("name", ", ")? {
         println!("Name{}: {}", if names.len() > 1 { "s" } else { "" }, names);
     }
-    if let Ok(msg) = result.string("msg") {
-        if !msg.is_empty() {
-            println!("Message: {}", msg);
-        }
+    if let Ok(msg) = result.string("msg")
+        && !msg.is_empty()
+    {
+        println!("Message: {}", msg);
     }
     Ok(())
 }
@@ -1225,10 +1192,11 @@ fn task<P: AsRef<Path>>(
             }
 
             found = true;
-            if let Some(msg) = res.string_maybe("msg") {
-                if !msg.is_empty() && msg != "OK" {
-                    println!("{}", msg);
-                }
+            if let Some(msg) = res.string_maybe("msg")
+                && !msg.is_empty()
+                && msg != "OK"
+            {
+                println!("{}", msg);
             }
             action(res)?;
         }
@@ -1237,10 +1205,11 @@ fn task<P: AsRef<Path>>(
         }
     }
 
-    if let Some(msg) = thishost.string_maybe("msg") {
-        if !msg.is_empty() && msg != "OK" {
-            println!("{}", msg);
-        }
+    if let Some(msg) = thishost.string_maybe("msg")
+        && !msg.is_empty()
+        && msg != "OK"
+    {
+        println!("{}", msg);
     }
     action(thishost)
 }
@@ -1446,11 +1415,11 @@ fn main() {
         // cut the list down to just the most recent for each host
         all.sort_by(|a, b| a.host.cmp(&b.host).then_with(|| b.age.cmp(&a.age)));
         all.dedup_by_key(|x| x.host.to_string());
-        if opt.json {
-            if let Some(i) = all.first() {
-                println!("{:#}", i.value);
-                ::std::process::exit(1);
-            }
+        if opt.json
+            && let Some(i) = all.first()
+        {
+            println!("{:#}", i.value);
+            ::std::process::exit(1);
         }
         match distill_facts(all, opt.fields, opt.order, field_filter, !opt.no_header) {
             Ok(x) => x,
