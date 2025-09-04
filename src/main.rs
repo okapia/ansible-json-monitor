@@ -56,9 +56,9 @@ impl std::fmt::Display for Bytes {
                     acc
                 }
             }) {
-            (bare, _, None) => write!(f, "{}", bare),
-            (units, 0, Some(u)) => f.pad(format!("{}{}", units, u).as_str()),
-            (units, dec, Some(u)) => f.pad(format!("{}.{}{}", units, dec, u).as_str()),
+            (bare, _, None) => write!(f, "{bare}"),
+            (units, 0, Some(u)) => f.pad(format!("{units}{u}").as_str()),
+            (units, dec, Some(u)) => f.pad(format!("{units}.{dec}{u}").as_str()),
         }
     }
 }
@@ -199,7 +199,7 @@ impl TryFrom<&OsString> for Table {
         } else if "zfs".starts_with(arg) {
             Ok(Table::Zfs)
         } else {
-            Err(Fail::Msg(format!("unrecognised fact type: {}", arg)))
+            Err(Fail::Msg(format!("unrecognised fact type: {arg}")))
         }
     }
 }
@@ -271,7 +271,7 @@ impl std::str::FromStr for Status {
         } else if "ok".starts_with(arg) {
             Ok(Status::Ok)
         } else {
-            Err(Fail::Msg(format!("unrecognised task status: {}", arg)))
+            Err(Fail::Msg(format!("unrecognised task status: {arg}")))
         }
     }
 }
@@ -287,17 +287,15 @@ enum Fail {
 impl fmt::Display for Fail {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Msg(m) => write!(fmt, "{}", m),
-            Self::OsMsg(m) => write!(fmt, "{:?}", m),
+            Self::Msg(m) => write!(fmt, "{m}"),
+            Self::OsMsg(m) => write!(fmt, "{m:?}"),
             Self::Missing(element) => write!(
                 fmt,
-                "json data didn't match assumptions: element {} missing",
-                element
+                "json data didn't match assumptions: element {element} missing"
             ),
             Self::Type(expected, element) => write!(
                 fmt,
-                "json data didn't match assumptions: expected \"{}\" to be of type {}",
-                element, expected
+                "json data didn't match assumptions: expected \"{element}\" to be of type {expected}"
             ),
         }
     }
@@ -383,7 +381,7 @@ fn gather_facts_errors(
             Err(v) => Either::Right(v),
         });
     for fail in &failures {
-        eprintln!("{}", fail);
+        eprintln!("{fail}");
     }
     for task in successes {
         let start = DateTime::parse_from_rfc3339(
@@ -441,7 +439,7 @@ fn gather_facts<'a>(dir: &'a Path, fact_class: &str) -> Vec<Result<Facts, (&'a P
     match gather_facts_errors(dir, fact_class) {
         Ok(v) => v
             .iter()
-            .map(|r| <Result<Facts, Fail> as Clone>::clone(&r).map_err(|e| (dir, e)))
+            .map(|r| r.clone().map_err(|e| (dir, e)))
             .collect(),
         Err(e) => vec![Err((dir, e))],
     }
@@ -602,16 +600,14 @@ fn distill_package_facts(
     header: bool,
 ) -> Result<(), Fail> {
     tabulate!(fields, sort_by = (HOST), filters, header, facts.iter()
-        .map(|fact| Some(fact.value
+        .filter_map(|fact| Some(fact.value
             .as_object()?
             .get("packages")?
             .as_object()?
             .iter()
-            .map(|(_,pkg)| pkg.as_array())
-            .filter_map(|n| n)
+            .filter_map(|(_,pkg)| pkg.as_array())
             .flatten()
             .zip(iter::repeat(&fact.host[..]))))
-        .filter_map(|n| n)
         .flatten(), {
         + < HOST: String => { &|(_,host): (_,&str)| Ok(host.to_string()) },
         + < NAME: String => { &|(val,_): (&serde_json::Value,_)| Ok(val.string("name")?.to_string()) },
@@ -632,13 +628,12 @@ fn distill_service_facts(
     header: bool,
 ) -> Result<(), Fail> {
     tabulate!(fields, sort_by = (HOST,NAME), filters, header, facts.iter()
-        .map(|fact| Some(fact.value
+        .filter_map(|fact| Some(fact.value
             .as_object()?
             .get("services")?
             .as_object()?
             .iter()
             .zip(iter::repeat(&fact.host[..]))))
-        .filter_map(|n| n)
         .flatten(), {
         + < HOST: String => { &|(_,host): (_,&str)| Ok(host.to_string()) },
         + < NAME: String => { &|((key,_),_): ((&String,_),_)| Ok(key.clone()) },
@@ -852,8 +847,7 @@ impl ChildGrab for serde_json::Value {
                 x.as_str()
                     .ok_or_else(|| {
                         Fail::Msg(format!(
-                            "JSON not well-formed - found non-string elements in {} array",
-                            s
+                            "JSON not well-formed - found non-string elements in {s} array"
                         ))
                     })
                     .map(|x| x.to_string())
@@ -936,10 +930,10 @@ fn results_command(result: &serde_json::Value) -> Result<(), Fail> {
         println!("Command: {}\nStatus: {}", line, result.number("rc")?);
     }
     if let Some(stderr) = result.stringarray("stderr_lines", "\n")? {
-        println!("stderr:\n{}", stderr);
+        println!("stderr:\n{stderr}");
     }
     if let Some(stdout) = result.stringarray("stdout_lines", "\n")? {
-        println!("stdout:\n{}", stdout);
+        println!("stdout:\n{stdout}");
     }
     Ok(())
 }
@@ -961,13 +955,13 @@ fn results_get_url(result: &serde_json::Value) -> Result<(), Fail> {
     println!("URL: {}", result.string("url")?);
     println!("File: {}", result.string("dest")?);
     if let Ok(status) = result.number("status_code") {
-        println!("Status: {}", status);
+        println!("Status: {status}");
     }
     if let Ok(size) = result.number("size") {
-        println!("Size: {}", size);
+        println!("Size: {size}");
     }
     if let Ok(response) = result.string("response") {
-        println!("Response: {}", response);
+        println!("Response: {response}");
     }
     Ok(())
 }
@@ -980,7 +974,7 @@ fn results_include_role(result: &serde_json::Value) -> Result<(), Fail> {
 fn results_include_tasks(result: &serde_json::Value) -> Result<(), Fail> {
     // this is missing where items are skipped
     if let Ok(file) = result.string("include") {
-        println!("File: {}", file);
+        println!("File: {file}");
     }
     Ok(())
 }
@@ -1011,7 +1005,7 @@ fn results_package(result: &serde_json::Value) -> Result<(), Fail> {
     if let Ok(msg) = result.string("msg")
         && !msg.is_empty()
     {
-        println!("Message: {}", msg);
+        println!("Message: {msg}");
     }
     Ok(())
 }
@@ -1057,15 +1051,15 @@ fn results_stat(result: &serde_json::Value) -> Result<(), Fail> {
             ("issock", "socket"),
         ] {
             if stat.bool(x).unwrap_or(false) {
-                println!("Type: {}", desc);
+                println!("Type: {desc}");
                 break;
             }
         }
         if let Ok(owner) = stat.string("pw_name") {
-            println!("Owner: {}", owner);
+            println!("Owner: {owner}");
         }
         if let Ok(group) = stat.string("gr_name") {
-            println!("Group: {}", group);
+            println!("Group: {group}");
         }
         print!("Permissions: ");
         for perm in [
@@ -1098,9 +1092,9 @@ fn task<P: AsRef<Path>>(
     let json = open_json_file(entry)?;
     let (thishost, task) = tasks(&json, hostname)?
         .nth(item as usize)
-        .ok_or_else(|| Fail::Msg(format!("{}: task not found", item)))?;
+        .ok_or_else(|| Fail::Msg(format!("{item}: task not found")))?;
     if opt_json {
-        println!("{:#}", thishost);
+        println!("{thishost:#}");
         return Ok(());
     }
 
@@ -1118,18 +1112,18 @@ fn task<P: AsRef<Path>>(
     let end = DateTime::parse_from_rfc3339(duration.string("end")?)?;
     let start = DateTime::parse_from_rfc3339(duration.string("start")?)?;
     let duration = end - start;
-    println!("{}", name);
+    println!("{name}");
     println!(
         "\nStart:  {}        Elapsed: {}ms",
         start.format("%Y-%m-%d %H:%M:%S"),
         duration.num_milliseconds()
     );
-    println!("Module: {:19}        Status:  {:#}", act, status);
+    println!("Module: {act:19}        Status:  {status:#}");
     println!("{}", "=".repeat(72));
 
     // handle case where no_log: true was set for the task
     if let Some(s) = thishost.string_maybe("censored") {
-        println!("{}", s);
+        println!("{s}");
         return Ok(());
     }
 
@@ -1185,7 +1179,7 @@ fn task<P: AsRef<Path>>(
                     _ => "unknown",
                 };
 
-                println!("{:43} {}", lbl, result);
+                println!("{lbl:43} {result}");
             }
 
             found = true;
@@ -1193,7 +1187,7 @@ fn task<P: AsRef<Path>>(
                 && !msg.is_empty()
                 && msg != "OK"
             {
-                println!("{}", msg);
+                println!("{msg}");
             }
             action(res)?;
         }
@@ -1206,7 +1200,7 @@ fn task<P: AsRef<Path>>(
         && !msg.is_empty()
         && msg != "OK"
     {
-        println!("{}", msg);
+        println!("{msg}");
     }
     action(thishost)
 }
@@ -1255,7 +1249,7 @@ fn main() {
         let argstr = match arg.to_str() {
             Some(a) => a,
             None => {
-                eprintln!("Invalid hostname or filter: {:?}", arg);
+                eprintln!("Invalid hostname or filter: {arg:?}");
                 ::std::process::exit(1);
             }
         };
@@ -1287,7 +1281,7 @@ fn main() {
     } else {
         let path = match getcfg() {
             Err(e) => {
-                eprintln!("{}", e);
+                eprintln!("{e}");
                 ::std::process::exit(1);
             }
             Ok(s) => PathBuf::from(s),
@@ -1309,7 +1303,7 @@ fn main() {
             match dir_contents(dir) {
                 Ok(x) => x,
                 Err(e) => {
-                    eprintln!("{}", e);
+                    eprintln!("{e}");
                     ::std::process::exit(1);
                 }
             }
@@ -1329,7 +1323,7 @@ fn main() {
     });
 
     if task_num.is_some() && table != Table::Tasks {
-        eprintln!("A task number is not applicable to the '{:?}' table", table);
+        eprintln!("A task number is not applicable to the '{table:?}' table");
         ::std::process::exit(1);
     }
 
@@ -1353,7 +1347,7 @@ fn main() {
         ) {
             Ok(x) => x,
             Err(e) => {
-                eprintln!("{}", e);
+                eprintln!("{e}");
                 ::std::process::exit(1);
             }
         };
@@ -1372,7 +1366,7 @@ fn main() {
         } else {
             task_list(&filename, hostname, opt.fields, opt.order, field_filter)
         } {
-            eprintln!("{:?}: {}", filename, e);
+            eprintln!("{filename:?}: {e}");
             ::std::process::exit(1);
         }
     } else {
@@ -1421,7 +1415,7 @@ fn main() {
         match distill_facts(all, opt.fields, opt.order, field_filter, !opt.no_header) {
             Ok(x) => x,
             Err(e) => {
-                eprintln!("{}", e);
+                eprintln!("{e}");
                 ::std::process::exit(1);
             }
         };
